@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>12306车票查询</title>
+    <style>
+        .search-box {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .input-group {
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .suggestion {
+            position: relative;
+            display: inline-block;
+        }
+
+        .suggestion-items {
+            position: absolute;
+            border: 1px solid #d4d4d4;
+            border-top: none;
+            z-index: 99;
+            top: 100%;
+            left: 0;
+            right: 0;
+        }
+
+        .suggestion-item {
+            padding: 10px;
+            cursor: pointer;
+            background-color: white;
+        }
+
+        .suggestion-item:hover {
+            background-color: #e9e9e9;
+        }
+
+
+
+        .bordered {
+            border: solid #ccc 1px;
+            -moz-border-radius: 6px;
+            -webkit-border-radius: 6px;
+            border-radius: 6px;
+            -webkit-box-shadow: 0 1px 1px #ccc;
+            -moz-box-shadow: 0 1px 1px #ccc;
+            box-shadow: 0 1px 1px #ccc;
+            /* box-shadow 属性向框添加一个或多个阴影,水平 垂直 阴影迷糊 阴影颜色 text-shdow像文本添加阴影 */
+        }
+
+        .bordered tr {
+            -o-transition: all 0.1s ease-in-out;
+            -webkit-transition: all 0.1s ease-in-out;
+            -moz-transition: all 0.1s ease-in-out;
+            -ms-transition: all 0.1s ease-in-out;
+            transition: all 0.1s ease-in-out;
+            /* all所有属性都将获得过渡效果，完成过渡效果0.1s，ease-in-out规定以慢速开始和结束的过渡效果 */
+        }
+
+        .bordered .highlight,
+        .bordered tr:hover {
+            background: #fbf8e9;
+        }
+
+        .bordered td,
+        .bordered th {
+            border-left: 1px solid #ccc;
+            border-top: 1px solid #ccc;
+            padding: 10px;
+            text-align: center;
+            /* 文本居中 */
+        }
+
+        .bordered th {
+            background-color: lightcyan;
+            background-image: -webkit-gradient(linear, left top, left bottom, from(#ebf3fc), to(#dce9f9));
+            background-image: -webkit-linear-gradient(top, #ebf3fc, #dce9f9);
+            background-image: -moz-linear-gradient(top, #ebf3fc, #dce9f9);
+            background-image: -ms-linear-gradient(top, #ebf3fc, #dce9f9);
+            background-image: -o-linear-gradient(top, #ebf3fc, #dce9f9);
+            background-image: linear-gradient(top, #ebf3fc, #dce9f9);
+            filter: progid:DXImageTransform.Microsoft.gradient(GradientType=0, startColorstr=#ebf3fc, endColorstr=#dce9f9);
+            -ms-filter: "progid:DXImageTransform.Microsoft.gradient (GradientType=0, startColorstr=#ebf3fc, endColorstr=#dce9f9)";
+            -webkit-box-shadow: 0 1px 0 rgba(255, 255, 255, .8) inset;
+            -moz-box-shadow: 0 1px 0 rgba(255, 255, 255, .8) inset;
+            box-shadow: 0 1px 0 rgba(255, 255, 255, .8) inset;
+            border-top: none;
+            text-shadow: 0 1px 0 rgba(255, 255, 255, .5);
+        }
+
+        .bordered td:first-child,
+        .bordered th:first-child {
+            border-left: none;
+        }
+
+        .bordered th:first-child {
+            -moz-border-radius: 6px 0 0 0;
+            -webkit-border-radius: 6px 0 0 0;
+            border-radius: 6px 0 0 0;
+        }
+
+        .bordered th:last-child {
+            -moz-border-radius: 0 6px 0 0;
+            -webkit-border-radius: 0 6px 0 0;
+            border-radius: 0 6px 0 0;
+        }
+
+        .bordered tr:last-child td:first-child {
+            -moz-border-radius: 0 0 0 6px;
+            -webkit-border-radius: 0 0 0 6px;
+            border-radius: 0 0 0 6px;
+        }
+
+        .bordered tr:last-child td:last-child {
+            -moz-border-radius: 0 0 6px 0;
+            -webkit-border-radius: 0 0 6px 0;
+            border-radius: 0 0 6px 0;
+        }
+    </style>
+    <!-- <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> -->
+    <script src="./static/jquery-3.6.0.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            // 获取今天的日期
+            var today = new Date();
+            var yyyy = today.getFullYear();
+            var mm = String(today.getMonth() + 1).padStart(2, '0');
+            var dd = String(today.getDate()).padStart(2, '0');
+            var todayStr = yyyy + '-' + mm + '-' + dd;
+            // 设置最小可选日期为今天
+            $('#date').attr('min', todayStr);
+
+
+            // 车站输入提示列表
+            function showSuggestions(inputId, query) {
+                $.getJSON('/trainquery/suggest?q=' + query, function (results) {
+                    var suggestionsId = '#suggestionList' + inputId;
+                    if (query == "") {
+                        $(suggestionsId).html('');
+                        return
+                    }
+                    var html = '';
+                    for (var i = 0; i < results.length; i++) {
+                        html += '<div class="suggestion-item">' + results[i] + '</div>';
+                    }
+                    $(suggestionsId).html(html);
+                });
+            }
+
+            // 出发站，输入触发
+            $('#from_station').on('input', function () {
+                var query = $(this).val();
+                showSuggestions(1, query);
+            });
+
+            // 终点站，输入触发
+            $('#to_station').on('input', function () {
+                var query = $(this).val();
+                showSuggestions(2, query);
+            });
+
+            // 提示词列表，出发站
+            $(document).on('click', '#suggestionList1 div', function () {
+                $('#from_station').val($(this).text());
+                $('#suggestionList1').html('');
+            });
+
+            // 提示词列表，终点站
+            $(document).on('click', '#suggestionList2 div', function () {
+                $('#to_station').val($(this).text());
+                $('#suggestionList2').html('');
+            });
+
+            $(document).on('click', function (e) {
+                if (!$(e.target).closest('#search-box').length) {
+                    $('#suggestionList1').html('');
+                    $('#suggestionList2').html('');
+                }
+            });
+
+            // 查询车票
+            $('#search-btn').on('click', function () {
+                var from_station = $('#from_station').val();
+                var to_station = $('#to_station').val();
+                search_date = $('#date').val();
+                $.getJSON('/trainquery/search?from_station=' + from_station +
+                    '&to_station=' + to_station +
+                    '&date=' + search_date, function (results) {
+                        // 结果保存到全局变量，根据选择的第n项，返回服务器抢票
+                        var html = ''
+                        search_result = results
+                        for (var i = 0; i < results.length; i++) {
+                            var item = results[i];
+                            html += '<tr><td>'
+                                + item['station_train_code'] + '</td><td>'
+                                + item['from_to_station'] + '</td><td>'
+                                + item['start_arrive_time'] + '</td><td>'
+                                + item['lishi'] + '</td><td>'
+                                + item['swz_tz_num'] + '</td><td>'
+                                + item['zy_num'] + '</td><td>'
+                                + item['ze_num'] + '</td><td>'
+                                + item['gr_num'] + '</td><td>'
+                                + item['rw_num'] + '</td><td>'
+                                + item['srrb_num'] + '</td><td>'
+                                + item['yw_num'] + '</td><td>'
+                                + item['rz_num'] + '</td><td>'
+                                + item['yz_num'] + '</td><td>'
+                                + item['wz_num'] + '</td><td>'
+                                + item['qt_num'] + '</td><td>'
+                                + '<input type="radio" name="num" value="' + i + '"></td></tr>';
+                        }
+                        $('#result-table-body').html(html);
+                    });
+            });
+
+        });
+
+        // 对象转url参数字符串
+        var jsonToUrlparamete = function (value) {
+            var oStr = '';
+            for (var key in value) {
+                oStr += key + "=" + value[key] + "&";
+            };
+            oStr = oStr.slice(0, -1);
+            return oStr;
+        };
+
+        // 搜索结果，储存对象
+        var search_result;
+        var search_date;
+
+        // 抢票
+        function submitForm() {
+            // 获取表格元素
+            var table = document.getElementById("train_frequency");
+            var rows = table.getElementsByTagName("tr");
+            var inputValue;
+            var trainInfo;
+            // 找到被选中的行
+            for (var i = 1; i < rows.length; i++) {
+                var inputs = rows[i].getElementsByTagName("input");
+                for (var j = 0; j < inputs.length; j++) {
+                    if (inputs[j].checked) {
+                        inputValue = inputs[j].value;
+                        break;
+                    }
+                }
+                if (inputValue) break;
+            }
+
+            console.log(inputValue)
+            if (!inputValue) {
+                return;
+            }
+            trainInfo = search_result[inputValue]
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/trainquery/buyticket', true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        var result = xhr.responseText;
+                        console.log(result); // 请求结果
+                    } else {
+                        var error = xhr.statusText;
+                        alert(error);
+                    }
+                }
+            };
+
+            var obj = {
+                'username': document.getElementById('username').value,
+                'password': document.getElementById('password').value,
+                'secretStr': trainInfo.secretStr,
+                'from_station_name': trainInfo.from_station_name,
+                'from_station_telecode': trainInfo.from_station_telecode,
+                'to_station_name': trainInfo.to_station_name,
+                'to_station_telecode': trainInfo.to_station_telecode,
+                'choose_seats': "1A",
+                'passengers': encodeURIComponent("陈宇明"),
+                'train_date': search_date
+            }
+            // var data = { username: 'John', password: 30 };
+            xhr.send(jsonToUrlparamete(obj));
+        }
+
+    </script>
+</head>
+
+<body>
+    <div>
+        <p>登录12306</p>
+        <form onsubmit="submitForm(); return false;">
+            <label for="username">账号:</label>
+            <input type="text" id="username" name="username">
+            <!-- <input type="text" id="username" name="username" required> -->
+            <label for="password">密码:</label>
+            <input type="password" id="password" name="password">
+            <button type="submit">提交</button>
+    </div>
+    <div id="search-box">
+        <div class="input-group">
+            <label for="from_station">出发站：</label>
+            <div class="suggestion">
+                <input type="text" name="from_station" id="from_station" placeholder="输入出发车站...">
+                <div class="suggestion-items" id="suggestionList1">
+                </div>
+            </div>
+        </div>
+        <div class="input-group">
+            <label for="from_station">到达站：</label>
+            <div class="suggestion">
+                <input type="text" name="to_station" id="to_station" placeholder="输入到达车站...">
+                <div class="suggestion-items" id="suggestionList2">
+                </div>
+            </div>
+        </div>
+        <div class="input-group">
+            <label for="date">选择日期：</label>
+            <input type="date" name="date" id="date">
+        </div>
+        <button id="search-btn">搜索</button>
+    </div>
+    <table class="bordered" id="train_frequency">
+        <thead>
+            <tr>
+                <th>车次</th>
+                <th>出发站/到达站</th>
+                <th>出发时间/到达时间</th>
+                <th>历时</th>
+                <th>商务座/特等座</th>
+                <th>一等座</th>
+                <th>二等座/二等包座</th>
+                <th>高级/软卧</th>
+                <th>软卧/一等卧</th>
+                <th>动卧</th>
+                <th>硬卧/二等卧</th>
+                <th>软座</th>
+                <th>硬座</th>
+                <th>无座</th>
+                <th>其他</th>
+                <th>购票</th>
+            </tr>
+        </thead>
+        <tbody id="result-table-body">
+        </tbody>
+    </table>
+
+</body>
+
+</html>
